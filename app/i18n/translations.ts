@@ -1,0 +1,42 @@
+export const translations = {
+  en: {
+    language: 'English',
+    switchToArabic: 'عربي',
+    multiLinks: 'Multi Links',
+    description: 'Your personal link management platform',
+    welcome: 'Welcome to Multi Links',
+    welcomeDescription: 'Your all-in-one solution for managing and sharing multiple links',
+    getStarted: 'Get Started',
+    signIn: 'Sign In',
+    signUp: 'Sign Up',
+    email: 'Email',
+    password: 'Password',
+    username: 'Username',
+    firstName: 'First Name',
+    createAccount: 'Create Account',
+    creatingAccount: 'Creating Account...',
+    signingIn: 'Signing In...',
+    or: 'OR',
+    // Add more translations here
+  },
+  ar: {
+    language: 'العربية',
+    switchToEnglish: 'En',
+    multiLinks: 'Multi Links',
+    description: 'منصتك الشخصية لإدارة الروابط',
+    welcome: 'مرحباً بك في Multi Links',
+    welcomeDescription: 'حلك الشامل لإدارة ومشاركة روابطك المتعددة',
+    getStarted: 'ابدأ الآن',
+    signIn: 'تسجيل الدخول',
+    signUp: 'إنشاء حساب',
+    email: 'البريد الإلكتروني',
+    password: 'كلمة المرور',
+    username: 'اسم المستخدم',
+    firstName: 'الاسم الأول',
+    createAccount: 'إنشاء حساب',
+    creatingAccount: 'جاري إنشاء الحساب...',
+    signingIn: 'جاري تسجيل الدخول...',
+    or: 'أو',
+    // Add more translations here
+  }
+};
