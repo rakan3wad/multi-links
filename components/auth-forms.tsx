@@ -9,9 +9,12 @@ import { translations } from "@/app/i18n/translations"
 import { FormErrors } from "./error/form-errors"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useRouter } from "next/navigation"
+import { SuccessAnimation } from "./success-animation"
+import { AnimatePresence } from "framer-motion"
 
 export function AuthForms() {
   const [isLoading, setIsLoading] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
   const [lang, setLang] = useState<'en' | 'ar'>('en')
   const [errors, setErrors] = useState<Record<string, string[] | undefined>>({})
   const supabase = createClientComponentClient()
@@ -72,7 +75,8 @@ export function AuthForms() {
     const firstName = formData.get('firstName') as string
 
     try {
-      const { error } = await supabase.auth.signUp({
+      // 1. Sign up the user with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -83,8 +87,37 @@ export function AuthForms() {
         },
       })
 
-      if (error) {
-        setErrors({ signup: [error.message] })
+      if (authError) {
+        setErrors({ signup: [authError.message] })
+        return
+      }
+
+      if (authData.user) {
+        // 2. Insert user data into profiles table
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: authData.user.id,
+              email: email,
+              username: username,
+              display_name: firstName,
+              created_at: new Date().toISOString(),
+            }
+          ])
+
+        if (profileError) {
+          setErrors({ signup: [profileError.message] })
+          // Optionally delete the auth user if profile creation fails
+          await supabase.auth.admin.deleteUser(authData.user.id)
+          return
+        }
+
+        // 3. Show success animation and redirect
+        setShowSuccess(true)
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 2000)
       }
     } catch (error: any) {
       setErrors({ signup: [error.message] })
@@ -95,6 +128,9 @@ export function AuthForms() {
 
   return (
     <div className="w-full max-w-md">
+      <AnimatePresence>
+        {showSuccess && <SuccessAnimation />}
+      </AnimatePresence>
       <Tabs defaultValue="login" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="login">{translations[lang].signIn}</TabsTrigger>
