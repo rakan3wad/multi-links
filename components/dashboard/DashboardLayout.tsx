@@ -43,16 +43,36 @@ export default function DashboardLayout() {
 
         if (profileData?.username) {
           setUsername(profileData.username);
+        } else {
+          // If username is not set, update it with email prefix
+          const defaultUsername = session.user.email?.split('@')[0];
+          if (defaultUsername) {
+            const { data: updatedProfile, error: updateError } = await supabase
+              .from("profiles")
+              .update({ 
+                username: defaultUsername,
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", session.user.id)
+              .select("username")
+              .single();
+
+            if (!updateError && updatedProfile) {
+              setUsername(updatedProfile.username);
+            }
+          }
         }
 
-        const { data, error } = await supabase
+        // Fetch active links
+        const { data: activeLinks, error: linksError } = await supabase
           .from("links")
           .select("*")
           .eq("user_id", session.user.id)
+          .eq("is_active", true)
           .order("created_at", { ascending: false });
 
-        if (error) throw error;
-        setLinks(data || []);
+        if (linksError) throw linksError;
+        setLinks(activeLinks || []);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -115,7 +135,7 @@ export default function DashboardLayout() {
     try {
       const { error } = await supabase
         .from("links")
-        .delete()
+        .update({ is_active: false })
         .eq("id", id);
 
       if (error) throw error;
@@ -161,10 +181,24 @@ export default function DashboardLayout() {
               <p className="text-gray-600">Manage your links</p>
             </div>
           </div>
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                if (username) {
+                  router.push(`/${username}`);
+                }
+              }}
+              disabled={!username}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Profile
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         <div className="mb-8">

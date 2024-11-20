@@ -1,14 +1,15 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/auth-helpers-nextjs';
 import { Upload, Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { toast } from 'sonner';
 
 interface ProfileImageProps {
-  user: User;
-  onImageUpdate: () => void;
+  user: User | null;
+  onImageUpdate?: () => void;
 }
 
 export default function ProfileImage({ user, onImageUpdate }: ProfileImageProps) {
@@ -19,6 +20,8 @@ export default function ProfileImage({ user, onImageUpdate }: ProfileImageProps)
 
   useEffect(() => {
     const fetchProfileImage = async () => {
+      if (!user) return;
+      
       try {
         const { data, error } = await supabase
           .from('profiles')
@@ -36,155 +39,142 @@ export default function ProfileImage({ user, onImageUpdate }: ProfileImageProps)
     };
 
     fetchProfileImage();
-  }, [user.id, supabase]);
+  }, [user, supabase]);
 
   const uploadImage = async (file: File) => {
-    console.log('Starting upload process...', { fileSize: file.size });
+    if (!user?.id) {
+      toast.error('Please sign in to upload an image');
+      return;
+    }
+
+    // Validate file type
+    const fileType = file.type.toLowerCase();
+    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(fileType)) {
+      toast.error('Please upload a JPEG or PNG image');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+
     try {
       setIsUploading(true);
       setIsImageLoading(true);
 
-      // Delete old image if exists
-      if (imageUrl) {
-        const oldFileName = imageUrl.split('/').pop()?.split('?')[0];
-        if (oldFileName) {
-          console.log('Deleting old image:', oldFileName);
-          await supabase.storage
-            .from('profile-images')
-            .remove([oldFileName]);
-        }
-      }
-
-      // Upload new image to storage
-      const fileExt = file.type === 'image/png' ? 'png' : 'jpg';
+      // Generate a unique file name
+      const fileExt = fileType.split('/')[1];
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      console.log('Uploading new image:', { fileName, fileType: file.type });
 
-      const { error: uploadError } = await supabase.storage
+      // First, try to upload the file
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('profile-images')
-        .upload(fileName, file, {
-          contentType: file.type,
+        .upload(`avatars/${fileName}`, file, {
           cacheControl: '3600',
-          upsert: true
+          upsert: false
         });
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
-        throw uploadError;
+        throw new Error(uploadError.message || 'Failed to upload image to storage');
       }
 
-      // Get public URL with cache buster
+      // Get public URL for the uploaded file
       const { data: { publicUrl } } = supabase.storage
         .from('profile-images')
-        .getPublicUrl(fileName);
+        .getPublicUrl(`avatars/${fileName}`);
 
-      const urlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
-      console.log('Updating user profile with new avatar URL:', urlWithCacheBuster);
+      if (!publicUrl) {
+        throw new Error('Failed to get public URL');
+      }
 
-      // Update user profile
+      // Delete old avatar if it exists
+      if (imageUrl) {
+        try {
+          const oldPath = imageUrl.split('profile-images/')[1]?.split('?')[0];
+          if (oldPath) {
+            await supabase.storage
+              .from('profile-images')
+              .remove([oldPath]);
+          }
+        } catch (deleteError) {
+          console.error('Error deleting old image:', deleteError);
+          // Continue even if delete fails
+        }
+      }
+
+      // Update profile with new avatar URL
       const { error: updateError } = await supabase
         .from('profiles')
-        .upsert({
-          id: user.id,
-          email: user.email,
-          username: user.email?.split('@')[0] || null,
-          avatar_url: urlWithCacheBuster,
-          updated_at: new Date().toISOString()
-        });
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
 
       if (updateError) {
         console.error('Profile update error:', updateError);
-        throw updateError;
+        throw new Error(updateError.message || 'Failed to update profile with new image');
       }
 
-      console.log('Profile updated successfully');
-      setImageUrl(urlWithCacheBuster);
-      onImageUpdate();
+      setImageUrl(publicUrl);
+      toast.success('Profile image updated successfully');
+      if (onImageUpdate) {
+        onImageUpdate();
+      }
     } catch (error) {
-      console.error('Detailed upload error:', error);
-      alert('Failed to upload image. Please try again.');
+      console.error('Error uploading image:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to upload image. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setIsUploading(false);
+      setIsImageLoading(false);
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!['image/jpeg', 'image/png'].includes(file.type)) {
-      alert('Please upload a JPEG or PNG image file');
-      return;
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadImage(file);
     }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
-      return;
-    }
-
-    await uploadImage(file);
   };
 
   return (
-    <div className="relative group">
-      <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-200">
-        {imageUrl ? (
-          <div className="relative w-full h-full">
-            {isImageLoading && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100">
-                <Loader2 className="w-6 h-6 text-indigo-600 animate-spin" />
-              </div>
-            )}
-            <Image
-              src={imageUrl}
-              alt="Profile"
-              fill
-              priority
-              sizes="96px"
-              className="object-cover"
-              style={{
-                objectFit: 'cover',
-                objectPosition: 'center',
-                opacity: isImageLoading ? 0 : 1,
-                transition: 'opacity 0.2s ease-in-out'
-              }}
-              onLoadingComplete={() => {
-                console.log('Image loaded');
-                setIsImageLoading(false);
-              }}
-            />
-          </div>
+    <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-100 group">
+      {imageUrl ? (
+        <Image
+          src={imageUrl}
+          alt="Profile"
+          width={96}
+          height={96}
+          className="object-cover w-full h-full"
+          onLoadStart={() => setIsImageLoading(true)}
+          onLoadingComplete={() => setIsImageLoading(false)}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary text-2xl font-semibold">
+          {user?.email?.charAt(0).toUpperCase() || '?'}
+        </div>
+      )}
+      
+      <label
+        htmlFor="profile-image"
+        className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+      >
+        {isUploading ? (
+          <Loader2 className="w-6 h-6 animate-spin" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-indigo-600 text-white text-2xl font-bold">
-            {user.email?.[0].toUpperCase()}
-          </div>
+          <Upload className="w-6 h-6" />
         )}
-        <label
-          className={`absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 
-            opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer
-            ${isUploading ? 'cursor-not-allowed' : ''}`}
-        >
-          {isUploading ? (
-            <div className="flex items-center gap-2 text-white">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Uploading...</span>
-            </div>
-          ) : (
-            <>
-              <input
-                type="file"
-                accept="image/jpeg,image/png"
-                onChange={handleFileChange}
-                className="hidden"
-                disabled={isUploading}
-              />
-              <Upload className="w-6 h-6 text-white" />
-            </>
-          )}
-        </label>
-      </div>
+        <input
+          type="file"
+          id="profile-image"
+          accept="image/*"
+          onChange={handleImageChange}
+          className="hidden"
+          disabled={isUploading}
+        />
+      </label>
     </div>
   );
 }

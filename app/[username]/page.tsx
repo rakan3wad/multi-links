@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import PublicProfile from "@/components/profile/PublicProfile";
 import { createServerClient } from "@/lib/supabase/server";
+import { Database } from "@/lib/supabase/types";
+
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 export default async function UserProfilePage({
   params,
@@ -10,28 +13,50 @@ export default async function UserProfilePage({
   const { username } = params;
   const supabase = createServerClient();
 
-  // First, find the user by username and get their profile data
-  const { data: userData, error: userError } = await supabase
+  let profile: Profile | null = null;
+
+  // First, try to find user by username
+  const { data: usernameProfile, error: usernameError } = await supabase
     .from("profiles")
-    .select("id, avatar_url")
+    .select("*")
     .eq("username", username)
     .single();
 
-  if (userError || !userData) {
+  if (usernameProfile) {
+    profile = usernameProfile;
+  } else {
+    // If not found, try to find by email prefix
+    const { data: emailProfile, error: emailError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("email", `${username}@gmail.com`)
+      .single();
+
+    if (emailProfile) {
+      profile = emailProfile;
+    }
+  }
+
+  // If no profile found, show 404
+  if (!profile) {
+    console.error('Profile not found:', username);
     notFound();
   }
 
-  // Then fetch user's links using their ID
-  const { data: links, error: linksError } = await supabase
+  // Fetch user's links
+  const { data: links } = await supabase
     .from("links")
     .select("*")
-    .eq("user_id", userData.id)
+    .eq("user_id", profile.id)
     .eq("is_active", true)
     .order("created_at", { ascending: false });
 
-  if (linksError || !links) {
-    notFound();
-  }
-
-  return <PublicProfile username={username} links={links} />;
+  return (
+    <PublicProfile 
+      username={profile.username} 
+      displayName={profile.display_name}
+      avatarUrl={profile.avatar_url}
+      links={links || []} 
+    />
+  );
 }

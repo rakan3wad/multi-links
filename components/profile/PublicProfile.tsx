@@ -1,104 +1,83 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Link } from "../dashboard/DashboardLayout";
-import { createClient } from "@/lib/supabase/client";
-import Image from "next/image";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface PublicProfileProps {
   username: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
   links: Link[];
 }
 
-export default function PublicProfile({ username, links }: PublicProfileProps) {
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const supabase = createClient();
-
-  useEffect(() => {
-    const fetchProfileImage = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('avatar_url')
-          .eq('username', username)
-          .single();
-
-        if (error) throw error;
-        if (data?.avatar_url) {
-          setAvatarUrl(data.avatar_url);
-        }
-      } catch (error) {
-        console.error('Error fetching profile image:', error);
-      }
-    };
-
-    fetchProfileImage();
-  }, [username, supabase]);
-
+export default function PublicProfile({ username, displayName, avatarUrl, links }: PublicProfileProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-white">
-      <div className="container mx-auto px-4 py-16">
+      <div className="container mx-auto px-4 py-16 max-w-4xl">
         {/* Profile Header */}
-        <div className="text-center mb-12">
-          <div className="w-24 h-24 relative rounded-full overflow-hidden mx-auto mb-4">
-            {avatarUrl ? (
-              <Image
-                src={avatarUrl}
-                alt={username}
-                fill
-                priority
-                sizes="96px"
-                className="object-cover"
-                style={{ objectFit: 'cover', objectPosition: 'center' }}
-              />
-            ) : (
-              <div className="w-full h-full bg-indigo-600 flex items-center justify-center">
-                <span className="text-2xl text-white font-bold">
+        <Card className="mb-8">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <Avatar className="w-24 h-24">
+                <AvatarImage src={avatarUrl || undefined} alt={username} />
+                <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
                   {username.slice(0, 2).toUpperCase()}
-                </span>
-              </div>
-            )}
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">@{username}</h1>
-          <p className="text-gray-600">My Collection of Links</p>
-        </div>
+                </AvatarFallback>
+              </Avatar>
+            </div>
+            <CardTitle className="text-3xl">
+              {displayName && <div className="mb-1">{displayName}</div>}
+              <div className="text-muted-foreground">@{username}</div>
+            </CardTitle>
+            <CardDescription>My Collection of Links</CardDescription>
+          </CardHeader>
+        </Card>
 
         {/* Links Grid */}
-        <div className="max-w-3xl mx-auto">
-          <div className="space-y-4">
-            {links.map((link) => (
-              <a
-                key={link.id}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block bg-white rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1"
-              >
-                <div className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                        {link.title}
-                      </h3>
-                      <p className="text-gray-600">{link.description}</p>
+        <div className="space-y-4">
+          {links.map((link) => (
+            <Card key={link.id} className="group hover:shadow-lg transition-all">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <h3 className="text-xl font-semibold">{link.title}</h3>
+                      <Badge variant="secondary" className="text-xs">
+                        {new URL(link.url).hostname.replace('www.', '')}
+                      </Badge>
                     </div>
-                    <ExternalLink className="w-5 h-5 text-indigo-600 flex-shrink-0 ml-4" />
+                    {link.description && (
+                      <p className="text-muted-foreground">{link.description}</p>
+                    )}
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    asChild
+                  >
+                    <a href={link.url} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </Button>
                 </div>
-              </a>
-            ))}
-          </div>
+              </CardContent>
+            </Card>
+          ))}
 
           {links.length === 0 && (
-            <div className="text-center py-12">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No links added yet
-              </h3>
-              <p className="text-gray-500">
-                This user hasn't added any links to their profile
-              </p>
-            </div>
+            <Card>
+              <CardContent className="text-center py-12">
+                <CardTitle className="text-lg mb-2">No links added yet</CardTitle>
+                <CardDescription>
+                  This user hasn't added any links to their profile
+                </CardDescription>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>

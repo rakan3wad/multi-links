@@ -4,6 +4,7 @@ import { IBM_Plex_Sans_Arabic } from 'next/font/google';
 import { Header } from '@/components/header';
 import AuthProvider from '@/components/auth/AuthProvider';
 import LanguageProvider from '@/components/language/LanguageProvider';
+import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -26,6 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${ibmPlexSansArabic.variable}`}>
       <body>
+        <Toaster richColors position="top-center" />
         <LanguageProvider>
           <div className="relative flex min-h-screen flex-col">
             <Header />
