@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/auth-helpers-nextjs';
-import { Upload } from 'lucide-react';
+import { Upload, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
 interface ProfileImageProps {
@@ -13,6 +13,7 @@ interface ProfileImageProps {
 
 export default function ProfileImage({ user, onImageUpdate }: ProfileImageProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const supabase = createClient();
 
@@ -41,6 +42,7 @@ export default function ProfileImage({ user, onImageUpdate }: ProfileImageProps)
     console.log('Starting upload process...', { fileSize: file.size });
     try {
       setIsUploading(true);
+      setIsImageLoading(true);
 
       // Delete old image if exists
       if (imageUrl) {
@@ -129,15 +131,31 @@ export default function ProfileImage({ user, onImageUpdate }: ProfileImageProps)
     <div className="relative group">
       <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-200">
         {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt="Profile"
-            fill
-            priority
-            sizes="96px"
-            className="object-cover"
-            style={{ objectFit: 'cover', objectPosition: 'center' }}
-          />
+          <div className="relative w-full h-full">
+            {isImageLoading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100">
+                <Loader2 className="w-6 h-6 text-indigo-600 animate-spin" />
+              </div>
+            )}
+            <Image
+              src={imageUrl}
+              alt="Profile"
+              fill
+              priority
+              sizes="96px"
+              className="object-cover"
+              style={{
+                objectFit: 'cover',
+                objectPosition: 'center',
+                opacity: isImageLoading ? 0 : 1,
+                transition: 'opacity 0.2s ease-in-out'
+              }}
+              onLoadingComplete={() => {
+                console.log('Image loaded');
+                setIsImageLoading(false);
+              }}
+            />
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-indigo-600 text-white text-2xl font-bold">
             {user.email?.[0].toUpperCase()}
@@ -149,7 +167,10 @@ export default function ProfileImage({ user, onImageUpdate }: ProfileImageProps)
             ${isUploading ? 'cursor-not-allowed' : ''}`}
         >
           {isUploading ? (
-            <div className="text-white">Uploading...</div>
+            <div className="flex items-center gap-2 text-white">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Uploading...</span>
+            </div>
           ) : (
             <>
               <input
