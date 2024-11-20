@@ -9,6 +9,7 @@ import ProfileImage from "./ProfileImage";
 import { Database } from "@/lib/supabase/types";
 import { useRouter } from "next/navigation";
 import { User } from "@supabase/auth-helpers-nextjs";
+import { Button } from "@/components/ui/button";
 
 export type Link = Database["public"]["Tables"]["links"]["Row"];
 
@@ -88,15 +89,12 @@ export default function DashboardLayout() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
-      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from("links")
         .insert([
           {
             ...newLink,
             user_id: session.user.id,
-            created_at: now,
-            updated_at: now,
             is_active: true
           },
         ])
@@ -151,124 +149,64 @@ export default function DashboardLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-white">
-      <div className="container mx-auto px-4 py-16">
-        {/* Profile Header */}
-        <div className="text-center mb-12">
-          <div className="relative inline-block">
-            {user && <ProfileImage user={user} onImageUpdate={() => {}} />}
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center space-x-4">
+            <ProfileImage user={user} />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Welcome, {username || 'User'}
+              </h1>
+              <p className="text-gray-600">Manage your links</p>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            @{username || user?.email?.split('@')[0]}
-          </h1>
-          <p className="text-gray-600 mb-4">My Collection of Links</p>
-          <div className="flex justify-center gap-4">
-            <button
-              onClick={() => setIsAddingCard(true)}
-              disabled={isLoading}
-              className={`flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white ${
-                isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-700'
-              }`}
-            >
-              <Plus className="h-5 w-5" />
-              Add Link
-            </button>
-            <button
-              onClick={() => router.push(`/${username || user?.email?.split('@')[0]}`)}
-              className="flex items-center gap-2 rounded-md bg-gray-600 px-4 py-2 text-white hover:bg-gray-700"
-            >
-              <Eye className="h-5 w-5" />
-              View Public Profile
-            </button>
-            <button
-              onClick={handleLogout}
-              disabled={isLoading}
-              className={`flex items-center gap-2 rounded-md bg-red-500 px-4 py-2 text-white ${
-                isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-600'
-              }`}
-            >
-              <LogOut className="h-5 w-5" />
-              Logout
-            </button>
-          </div>
+          <Button variant="outline" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
         </div>
 
-        {/* Links Section */}
-        <div className="max-w-3xl mx-auto">
-          {isAddingCard && (
-            <div className="mb-4">
-              <AddLinkCard
-                onSubmit={handleAddLink}
-                onCancel={() => setIsAddingCard(false)}
-              />
-            </div>
-          )}
-          
-          <div className="space-y-4">
-            {isLoading ? (
-              <div className="text-center py-12">
-                <div className="animate-pulse text-lg text-gray-600">
-                  Loading your links...
-                </div>
-              </div>
-            ) : links.length === 0 && !isAddingCard ? (
-              <div className="text-center py-12">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No links added yet
-                </h3>
-                <p className="text-gray-500 mb-4">
-                  Start by adding your first link
-                </p>
-                <button
-                  onClick={() => setIsAddingCard(true)}
-                  className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
-                >
-                  <Plus className="h-5 w-5" />
-                  Add Your First Link
-                </button>
-              </div>
-            ) : (
-              links.map((link) => (
-                <div
-                  key={link.id}
-                  className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all"
-                >
-                  <div className="p-6">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-grow">
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                          {link.title}
-                        </h3>
-                        <p className="text-gray-600">{link.description}</p>
-                      </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <a
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 text-indigo-600 hover:text-indigo-800 transition-colors"
-                        >
-                          <ExternalLink className="w-5 h-5" />
-                        </a>
-                        <button
-                          onClick={() => handleEditLink(link.id, link)}
-                          className="p-2 text-gray-600 hover:text-gray-800 transition-colors"
-                        >
-                          <Edit2 className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteLink(link.id)}
-                          className="p-2 text-red-600 hover:text-red-800 transition-colors"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+        <div className="mb-8">
+          <Button
+            onClick={() => setIsAddingCard(true)}
+            className="w-full max-w-2xl flex items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Add New Link
+          </Button>
+        </div>
+
+        {isAddingCard && (
+          <div className="mb-8">
+            <AddLinkCard
+              onSave={handleAddLink}
+              onCancel={() => setIsAddingCard(false)}
+            />
           </div>
+        )}
+
+        <div className="space-y-6">
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+              <p className="mt-2 text-gray-600">Loading your links...</p>
+            </div>
+          ) : links.length === 0 ? (
+            <div className="text-center py-12">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No links yet</h3>
+              <p className="text-gray-600">Add your first link to get started!</p>
+            </div>
+          ) : (
+            links.map((link) => (
+              <LinkCard
+                key={link.id}
+                link={link}
+                onDelete={handleDeleteLink}
+                onEdit={handleEditLink}
+              />
+            ))
+          )}
         </div>
       </div>
     </div>

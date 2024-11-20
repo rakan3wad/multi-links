@@ -91,38 +91,60 @@ export default function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
 
   return (
     <>
-      <Card className="p-4">
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">{link.title}</h3>
-            <p className="text-sm text-gray-500 break-all">{link.url}</p>
+      <Card className="w-full max-w-2xl p-6 hover:shadow-lg transition-shadow duration-200">
+        <div className="flex flex-col space-y-4">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">{link.title}</h3>
+              <a 
+                href={link.url} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-sm text-blue-500 hover:text-blue-700 break-all mb-2 flex items-center"
+              >
+                {link.url}
+                <ExternalLink className="h-4 w-4 ml-1 inline" />
+              </a>
+              {link.description && (
+                <p className="text-sm text-gray-600 mt-2">{link.description}</p>
+              )}
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        
-        <p className="text-sm text-gray-600 mb-4">{link.description}</p>
-        
-        <div className="flex justify-end">
-          <Button variant="outline" onClick={handleVisit}>
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Visit Link
-          </Button>
+          
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+            <div className="text-sm text-gray-500">
+              Added {new Date(link.created_at).toLocaleDateString()}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-2"
+              onClick={handleVisit}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Visit Link
+            </Button>
+          </div>
         </div>
       </Card>
 

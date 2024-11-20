@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 
 interface AddLinkCardProps {
-  onSubmit: (data: { title: string; url: string; description: string }) => void;
+  onSave: (data: { title: string; url: string; description: string }) => void;
   onCancel: () => void;
 }
 
-export default function AddLinkCard({ onSubmit, onCancel }: AddLinkCardProps) {
+export default function AddLinkCard({ onSave, onCancel }: AddLinkCardProps) {
   const [formData, setFormData] = useState({
     title: '',
     url: '',
@@ -24,7 +24,7 @@ export default function AddLinkCard({ onSubmit, onCancel }: AddLinkCardProps) {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await onSubmit(formData);
+      await onSave(formData);
       setFormData({ title: '', url: '', description: '' });
     } catch (error) {
       console.error('Error submitting form:', error);

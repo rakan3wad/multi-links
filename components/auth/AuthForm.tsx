@@ -57,19 +57,22 @@ export default function AuthForm({ isSignUpDefault = false }: AuthFormProps) {
           options: {
             data: {
               username,
-              email,
             },
+            emailRedirectTo: `${window.location.origin}/auth/callback`
           },
         });
 
-        if (signUpError) throw signUpError;
+        if (signUpError && !signUpError.message.includes('profiles_pkey')) {
+          throw signUpError;
+        }
 
         if (!signUpData.user) {
           throw new Error("Signup failed - no user data returned");
         }
 
-        setSuccess("Account created successfully! You can now sign in.");
-        setIsSignUp(false);
+        // Redirect to dashboard immediately after successful signup
+        router.push("/dashboard");
+        router.refresh();
       } else {
         // Sign in
         const { data, error: signInError } = await supabase.auth.signInWithPassword({
