@@ -10,17 +10,22 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // If user is not signed in and the current path is /dashboard, redirect to /
+  // If user is not signed in and the current path is /dashboard, redirect to /auth
   if (!session && req.nextUrl.pathname.startsWith('/dashboard')) {
-    const redirectUrl = new URL('/', req.url);
+    const redirectUrl = new URL('/auth', req.url);
     return NextResponse.redirect(redirectUrl);
   }
 
-  // If user is signed in and the current path is /, redirect to /dashboard
-  if (session && req.nextUrl.pathname === '/') {
+  // If user is signed in and the current path is /auth, redirect to /dashboard
+  if (session && req.nextUrl.pathname === '/auth') {
     const redirectUrl = new URL('/dashboard', req.url);
     return NextResponse.redirect(redirectUrl);
   }
 
   return res;
 }
+
+// Add middleware config to specify which routes to run on
+export const config = {
+  matcher: ['/dashboard/:path*', '/auth'],
+};

@@ -1,14 +1,15 @@
 import './globals.css';
 import { Inter } from 'next/font/google';
-import localFont from 'next/font/local';
+import { IBM_Plex_Sans_Arabic } from 'next/font/google';
 import { Header } from '@/components/header';
 import AuthProvider from '@/components/auth/AuthProvider';
 import LanguageProvider from '@/components/language/LanguageProvider';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
-const ibmPlexSansArabic = localFont({
-  src: '../public/fonts/IBMPlexSansArabic-Regular.woff2',
+const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
+  weight: ['400'],
+  subsets: ['arabic'],
   variable: '--font-arabic',
 });
 

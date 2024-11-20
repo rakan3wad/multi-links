@@ -1,67 +1,147 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Pencil, Trash2, ExternalLink } from "lucide-react";
-import { Link } from "./DashboardLayout";
-import AddLinkCard from "./AddLinkCard";
+import { useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Link } from './DashboardLayout';
+import { Edit, MoreVertical, Trash2, ExternalLink } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface LinkCardProps {
   link: Link;
   onDelete: (id: string) => void;
-  onEdit: (id: string, link: Omit<Link, "id">) => void;
+  onEdit: (id: string, data: { title: string; url: string; description: string }) => void;
 }
 
 export default function LinkCard({ link, onDelete, onEdit }: LinkCardProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [formData, setFormData] = useState({
+    title: link.title,
+    url: link.url,
+    description: link.description
+  });
 
-  const handleEdit = (updatedLink: Omit<Link, "id">) => {
-    onEdit(link.id, updatedLink);
+  const handleEdit = () => {
+    onEdit(link.id, formData);
     setIsEditing(false);
+  };
+
+  const handleDelete = () => {
+    onDelete(link.id);
+    setShowDeleteDialog(false);
+  };
+
+  const handleVisit = () => {
+    window.open(link.url, '_blank');
   };
 
   if (isEditing) {
     return (
-      <AddLinkCard
-        initialData={link}
-        onSave={handleEdit}
-        onCancel={() => setIsEditing(false)}
-      />
+      <Card className="p-4">
+        <div className="space-y-4">
+          <input
+            type="text"
+            value={formData.title}
+            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            className="w-full p-2 border rounded"
+            placeholder="Title"
+          />
+          <input
+            type="url"
+            value={formData.url}
+            onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
+            className="w-full p-2 border rounded"
+            placeholder="URL"
+          />
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            className="w-full p-2 border rounded"
+            placeholder="Description"
+            rows={3}
+          />
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setIsEditing(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEdit}>
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </Card>
     );
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-      <div className="flex justify-between items-start mb-4">
-        <h3 className="text-xl font-semibold text-gray-900 flex-1">{link.title}</h3>
-        <div className="flex space-x-2 ml-4">
-          <button
-            onClick={() => setIsEditing(true)}
-            className="text-gray-400 hover:text-gray-600"
-            title="Edit"
-          >
-            <Pencil className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => onDelete(link.id)}
-            className="text-gray-400 hover:text-red-600"
-            title="Delete"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
+    <>
+      <Card className="p-4">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">{link.title}</h3>
+            <p className="text-sm text-gray-500 break-all">{link.url}</p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </div>
+        
+        <p className="text-sm text-gray-600 mb-4">{link.description}</p>
+        
+        <div className="flex justify-end">
+          <Button variant="outline" onClick={handleVisit}>
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Visit Link
+          </Button>
+        </div>
+      </Card>
 
-      <p className="text-gray-600 mb-4 line-clamp-2">{link.description}</p>
-
-      <a
-        href={link.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center text-indigo-600 hover:text-indigo-800"
-      >
-        Visit Link
-        <ExternalLink className="w-4 h-4 ml-1" />
-      </a>
-    </div>
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this link. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

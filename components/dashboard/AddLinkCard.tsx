@@ -1,125 +1,108 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { X } from "lucide-react";
-import { Link } from "./DashboardLayout";
+import { useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
 
 interface AddLinkCardProps {
-  onSubmit: (link: Omit<Link, "id">) => void;
+  onSubmit: (data: { title: string; url: string; description: string }) => void;
   onCancel: () => void;
-  initialData?: Omit<Link, "id">;
 }
 
-export default function AddLinkCard({
-  onSubmit,
-  onCancel,
-  initialData,
-}: AddLinkCardProps) {
-  const [formData, setFormData] = useState<Omit<Link, "id">>(
-    initialData || {
-      title: "",
-      url: "",
-      description: "",
-    }
-  );
+export default function AddLinkCard({ onSubmit, onCancel }: AddLinkCardProps) {
+  const [formData, setFormData] = useState({
+    title: '',
+    url: '',
+    description: ''
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted with data:", formData);
-    onSubmit(formData);
+    setIsLoading(true);
+    try {
+      await onSubmit(formData);
+      setFormData({ title: '', url: '', description: '' });
+    } catch (error) {
+      console.error('Error submitting form:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white p-6 rounded-lg shadow-md relative"
-    >
+    <Card className="p-4 relative">
       <button
-        type="button"
         onClick={onCancel}
-        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+        className="absolute right-2 top-2 p-1 rounded-full hover:bg-gray-100"
       >
-        <X className="w-5 h-5" />
+        <X className="h-5 w-5 text-gray-500" />
       </button>
-
-      <h2 className="text-xl font-semibold mb-4">
-        {initialData ? "Edit Link" : "Add New Link"}
-      </h2>
-
-      <div className="space-y-4">
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label
-            htmlFor="title"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
             Title
           </label>
-          <input
-            type="text"
+          <Input
             id="title"
-            required
+            placeholder="Enter link title"
             value={formData.title}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, title: e.target.value }))
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            required
+            className="w-full"
           />
         </div>
 
         <div>
-          <label
-            htmlFor="url"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-1">
             URL
           </label>
-          <input
-            type="url"
+          <Input
             id="url"
-            required
+            type="url"
+            placeholder="https://example.com"
             value={formData.url}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, url: e.target.value }))
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
+            required
+            className="w-full"
           />
         </div>
 
         <div>
-          <label
-            htmlFor="description"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
             Description
           </label>
-          <textarea
+          <Textarea
             id="description"
-            required
+            placeholder="Enter link description"
             value={formData.description}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, description: e.target.value }))
-            }
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            required
+            className="w-full min-h-[100px]"
           />
         </div>
 
-        <div className="flex justify-end space-x-3">
-          <button
+        <div className="flex justify-end space-x-2">
+          <Button
             type="button"
+            variant="outline"
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            disabled={isLoading}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            disabled={isLoading}
           >
-            {initialData ? "Save Changes" : "Add Link"}
-          </button>
+            {isLoading ? 'Publishing...' : 'Publish'}
+          </Button>
         </div>
-      </div>
-    </form>
+      </form>
+    </Card>
   );
 }
