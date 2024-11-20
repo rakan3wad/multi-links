@@ -47,7 +47,10 @@ export default function PublicProfile({ username, links }: PublicProfileProps) {
                 src={avatarUrl}
                 alt={username}
                 fill
+                priority
+                sizes="96px"
                 className="object-cover"
+                style={{ objectFit: 'cover', objectPosition: 'center' }}
               />
             ) : (
               <div className="w-full h-full bg-indigo-600 flex items-center justify-center">

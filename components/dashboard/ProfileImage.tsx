@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/auth-helpers-nextjs';
-import { Upload, X } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import Image from 'next/image';
 
 interface ProfileImageProps {
@@ -38,93 +38,69 @@ export default function ProfileImage({ user, onImageUpdate }: ProfileImageProps)
   }, [user.id, supabase]);
 
   const uploadImage = async (file: File) => {
+    console.log('Starting upload process...', { fileSize: file.size });
     try {
       setIsUploading(true);
 
       // Delete old image if exists
       if (imageUrl) {
-        const oldFileName = imageUrl.split('/').pop();
+        const oldFileName = imageUrl.split('/').pop()?.split('?')[0];
         if (oldFileName) {
-          const { error: removeError } = await supabase.storage
+          console.log('Deleting old image:', oldFileName);
+          await supabase.storage
             .from('profile-images')
             .remove([oldFileName]);
-          
-          if (removeError) {
-            console.error('Error removing old image:', removeError);
-            // Continue with upload even if delete fails
-          }
         }
       }
 
       // Upload new image to storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-      
-      console.log('Attempting to upload file:', fileName);
-      const { error: uploadError, data: uploadData } = await supabase.storage
+      const fileExt = file.type === 'image/png' ? 'png' : 'jpg';
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      console.log('Uploading new image:', { fileName, fileType: file.type });
+
+      const { error: uploadError } = await supabase.storage
         .from('profile-images')
         .upload(fileName, file, {
+          contentType: file.type,
           cacheControl: '3600',
           upsert: true
         });
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
-        throw new Error(`Upload failed: ${uploadError.message}`);
+        throw uploadError;
       }
 
-      console.log('Upload successful:', uploadData);
-
-      // Get public URL
+      // Get public URL with cache buster
       const { data: { publicUrl } } = supabase.storage
         .from('profile-images')
         .getPublicUrl(fileName);
 
-      console.log('Public URL:', publicUrl);
-
-      // Check if profiles table exists and create it if it doesn't
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .limit(1);
-
-      if (profileError) {
-        console.error('Error checking profiles table:', profileError);
-        // Create profiles table if it doesn't exist
-        const { error: createTableError } = await supabase
-          .rpc('create_profiles_table');
-        
-        if (createTableError) {
-          console.error('Error creating profiles table:', createTableError);
-          throw new Error('Failed to create profiles table');
-        }
-      }
+      const urlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
+      console.log('Updating user profile with new avatar URL:', urlWithCacheBuster);
 
       // Update user profile
       const { error: updateError } = await supabase
         .from('profiles')
-        .upsert({ 
+        .upsert({
           id: user.id,
           email: user.email,
           username: user.email?.split('@')[0] || null,
-          avatar_url: publicUrl,
+          avatar_url: urlWithCacheBuster,
           updated_at: new Date().toISOString()
         });
 
       if (updateError) {
         console.error('Profile update error:', updateError);
-        throw new Error(`Profile update failed: ${updateError.message}`);
+        throw updateError;
       }
 
-      setImageUrl(publicUrl);
+      console.log('Profile updated successfully');
+      setImageUrl(urlWithCacheBuster);
       onImageUpdate();
     } catch (error) {
-      console.error('Error in uploadImage:', error);
-      if (error instanceof Error) {
-        alert(`Upload failed: ${error.message}`);
-      } else {
-        alert('Failed to upload image. Please try again.');
-      }
+      console.error('Detailed upload error:', error);
+      alert('Failed to upload image. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -135,8 +111,8 @@ export default function ProfileImage({ user, onImageUpdate }: ProfileImageProps)
     if (!file) return;
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file');
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      alert('Please upload a JPEG or PNG image file');
       return;
     }
 
@@ -157,7 +133,10 @@ export default function ProfileImage({ user, onImageUpdate }: ProfileImageProps)
             src={imageUrl}
             alt="Profile"
             fill
+            priority
+            sizes="96px"
             className="object-cover"
+            style={{ objectFit: 'cover', objectPosition: 'center' }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-indigo-600 text-white text-2xl font-bold">
@@ -175,7 +154,7 @@ export default function ProfileImage({ user, onImageUpdate }: ProfileImageProps)
             <>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png"
                 onChange={handleFileChange}
                 className="hidden"
                 disabled={isUploading}
