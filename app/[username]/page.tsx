@@ -10,14 +10,26 @@ export default async function UserProfilePage({
   const { username } = params;
   const supabase = createServerClient();
 
-  // Fetch user's links
-  const { data: links, error } = await supabase
+  // First, find the user by username
+  const { data: userData, error: userError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("username", username)
+    .single();
+
+  if (userError || !userData) {
+    notFound();
+  }
+
+  // Then fetch user's links using their ID
+  const { data: links, error: linksError } = await supabase
     .from("links")
     .select("*")
-    .eq("username", username)
+    .eq("user_id", userData.id)
+    .eq("is_active", true)
     .order("created_at", { ascending: false });
 
-  if (error || !links || links.length === 0) {
+  if (linksError || !links) {
     notFound();
   }
 

@@ -19,6 +19,7 @@ export default function DashboardLayout() {
   const supabase = createClient();
 
   const fetchLinks = useCallback(async (userId: string) => {
+    setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("links")
@@ -30,12 +31,12 @@ export default function DashboardLayout() {
       setLinks(data || []);
     } catch (error) {
       console.error("Error fetching links:", error);
+    } finally {
+      setIsLoading(false);
     }
   }, [supabase]);
 
   useEffect(() => {
-    let mounted = true;
-
     const initializeDashboard = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -46,16 +47,10 @@ export default function DashboardLayout() {
           return;
         }
 
-        if (mounted) {
-          await fetchLinks(session.user.id);
-        }
+        await fetchLinks(session.user.id);
       } catch (error) {
         console.error("Error initializing dashboard:", error);
         router.replace("/auth");
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
       }
     };
 
@@ -71,7 +66,6 @@ export default function DashboardLayout() {
     });
 
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
   }, [router, fetchLinks, supabase.auth]);
