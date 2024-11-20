@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Link } from "../dashboard/DashboardLayout";
+import { createClient } from "@/lib/supabase/client";
+import Image from "next/image";
 
 interface PublicProfileProps {
   username: string;
@@ -9,15 +12,50 @@ interface PublicProfileProps {
 }
 
 export default function PublicProfile({ username, links }: PublicProfileProps) {
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const fetchProfileImage = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('username', username)
+          .single();
+
+        if (error) throw error;
+        if (data?.avatar_url) {
+          setAvatarUrl(data.avatar_url);
+        }
+      } catch (error) {
+        console.error('Error fetching profile image:', error);
+      }
+    };
+
+    fetchProfileImage();
+  }, [username, supabase]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-white">
       <div className="container mx-auto px-4 py-16">
         {/* Profile Header */}
         <div className="text-center mb-12">
-          <div className="w-24 h-24 bg-indigo-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-            <span className="text-2xl text-white font-bold">
-              {username.slice(0, 2).toUpperCase()}
-            </span>
+          <div className="w-24 h-24 relative rounded-full overflow-hidden mx-auto mb-4">
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={username}
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-indigo-600 flex items-center justify-center">
+                <span className="text-2xl text-white font-bold">
+                  {username.slice(0, 2).toUpperCase()}
+                </span>
+              </div>
+            )}
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">@{username}</h1>
           <p className="text-gray-600">My Collection of Links</p>

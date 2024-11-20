@@ -10,10 +10,10 @@ export default async function UserProfilePage({
   const { username } = params;
   const supabase = createServerClient();
 
-  // First, find the user by username
+  // First, find the user by username and get their profile data
   const { data: userData, error: userError } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, avatar_url")
     .eq("username", username)
     .single();
 
