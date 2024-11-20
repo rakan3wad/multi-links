@@ -5,8 +5,10 @@ import { Plus, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AddLinkCard from "./AddLinkCard";
 import LinkCard from "./LinkCard";
+import ProfileImage from "./ProfileImage";
 import { Database } from "@/lib/supabase/types";
 import { useRouter } from "next/navigation";
+import { User } from "@supabase/auth-helpers-nextjs";
 
 export type Link = Database["public"]["Tables"]["links"]["Row"];
 
@@ -15,10 +17,11 @@ export default function DashboardLayout() {
   const [links, setLinks] = useState<Link[]>([]);
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
-    const fetchLinks = async () => {
+    const fetchData = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -26,6 +29,8 @@ export default function DashboardLayout() {
           router.replace("/auth");
           return;
         }
+
+        setUser(session.user);
 
         const { data, error } = await supabase
           .from("links")
@@ -36,17 +41,19 @@ export default function DashboardLayout() {
         if (error) throw error;
         setLinks(data || []);
       } catch (error) {
-        console.error("Error fetching links:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchLinks();
+    fetchData();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         router.replace("/auth");
+      } else if (session?.user) {
+        setUser(session.user);
       }
     });
 
@@ -133,25 +140,30 @@ export default function DashboardLayout() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Your Links</h1>
-        <div className="flex gap-4">
-          <button
-            onClick={() => setIsAddingCard(true)}
-            disabled={isLoading}
-            className={`flex items-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-white ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'}`}
-          >
-            <Plus className="h-5 w-5" />
-            Add Link
-          </button>
-          <button
-            onClick={handleLogout}
-            disabled={isLoading}
-            className={`flex items-center gap-2 rounded-md bg-red-500 px-4 py-2 text-white ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-600'}`}
-          >
-            <LogOut className="h-5 w-5" />
-            Logout
-          </button>
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-4">
+            {user && <ProfileImage user={user} onImageUpdate={() => {}} />}
+            <h1 className="text-3xl font-bold">Your Links</h1>
+          </div>
+          <div className="flex gap-4">
+            <button
+              onClick={() => setIsAddingCard(true)}
+              disabled={isLoading}
+              className={`flex items-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-white ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'}`}
+            >
+              <Plus className="h-5 w-5" />
+              Add Link
+            </button>
+            <button
+              onClick={handleLogout}
+              disabled={isLoading}
+              className={`flex items-center gap-2 rounded-md bg-red-500 px-4 py-2 text-white ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-600'}`}
+            >
+              <LogOut className="h-5 w-5" />
+              Logout
+            </button>
+          </div>
         </div>
       </div>
 
