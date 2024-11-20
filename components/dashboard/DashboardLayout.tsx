@@ -7,7 +7,6 @@ import AddLinkCard from "./AddLinkCard";
 import LinkCard from "./LinkCard";
 import { Database } from "@/lib/supabase/types";
 import { useRouter } from "next/navigation";
-import { useCallback } from "react";
 
 export type Link = Database["public"]["Tables"]["links"]["Row"];
 
@@ -18,49 +17,35 @@ export default function DashboardLayout() {
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClient();
 
-  const fetchLinks = useCallback(async (userId: string) => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("links")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setLinks(data || []);
-    } catch (error) {
-      console.error("Error fetching links:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [supabase]);
-
   useEffect(() => {
-    const initializeDashboard = async () => {
+    const fetchLinks = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-
+        const { data: { session } } = await supabase.auth.getSession();
+        
         if (!session?.user) {
           router.replace("/auth");
           return;
         }
 
-        await fetchLinks(session.user.id);
+        const { data, error } = await supabase
+          .from("links")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setLinks(data || []);
       } catch (error) {
-        console.error("Error initializing dashboard:", error);
-        router.replace("/auth");
+        console.error("Error fetching links:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    initializeDashboard();
+    fetchLinks();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        await fetchLinks(session.user.id);
-      } else if (event === 'SIGNED_OUT' || !session) {
-        setLinks([]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
         router.replace("/auth");
       }
     });
@@ -68,7 +53,7 @@ export default function DashboardLayout() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [router, fetchLinks, supabase.auth]);
+  }, [router, supabase]);
 
   const handleLogout = async () => {
     try {
@@ -81,28 +66,15 @@ export default function DashboardLayout() {
 
   const handleAddLink = async (newLink: Omit<Link, "id" | "created_at" | "user_id">) => {
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error("Session error:", sessionError);
-        router.replace("/auth");
-        return;
-      }
-
-      if (!session?.user) {
-        console.error("No active session found");
-        router.replace("/auth");
-        return;
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
 
       const now = new Date().toISOString();
       const { data, error } = await supabase
         .from("links")
         .insert([
           {
-            title: newLink.title,
-            url: newLink.url,
-            description: newLink.description,
+            ...newLink,
             user_id: session.user.id,
             created_at: now,
             updated_at: now,
@@ -112,11 +84,7 @@ export default function DashboardLayout() {
         .select()
         .single();
 
-      if (error) {
-        console.error("Error inserting link:", error);
-        throw error;
-      }
-      
+      if (error) throw error;
       if (data) {
         setLinks((prev) => [data, ...prev]);
         setIsAddingCard(false);
@@ -163,10 +131,6 @@ export default function DashboardLayout() {
     }
   };
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
@@ -174,14 +138,16 @@ export default function DashboardLayout() {
         <div className="flex gap-4">
           <button
             onClick={() => setIsAddingCard(true)}
-            className="flex items-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+            disabled={isLoading}
+            className={`flex items-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-white ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'}`}
           >
             <Plus className="h-5 w-5" />
             Add Link
           </button>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 rounded-md bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+            disabled={isLoading}
+            className={`flex items-center gap-2 rounded-md bg-red-500 px-4 py-2 text-white ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-600'}`}
           >
             <LogOut className="h-5 w-5" />
             Logout
@@ -196,14 +162,31 @@ export default function DashboardLayout() {
             onCancel={() => setIsAddingCard(false)}
           />
         )}
-        {links.map((link) => (
-          <LinkCard
-            key={link.id}
-            link={link}
-            onDelete={handleDeleteLink}
-            onEdit={handleEditLink}
-          />
-        ))}
+        {isLoading ? (
+          <div className="col-span-full flex justify-center items-center min-h-[200px]">
+            <div className="animate-pulse text-lg text-gray-600">Loading your links...</div>
+          </div>
+        ) : links.length === 0 && !isAddingCard ? (
+          <div className="col-span-full text-center py-12">
+            <p className="text-gray-600 mb-4">You haven't added any links yet.</p>
+            <button
+              onClick={() => setIsAddingCard(true)}
+              className="inline-flex items-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+            >
+              <Plus className="h-5 w-5" />
+              Add Your First Link
+            </button>
+          </div>
+        ) : (
+          links.map((link) => (
+            <LinkCard
+              key={link.id}
+              link={link}
+              onDelete={handleDeleteLink}
+              onEdit={handleEditLink}
+            />
+          ))
+        )}
       </div>
     </div>
   );
